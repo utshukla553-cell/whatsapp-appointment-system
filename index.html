@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Appointment Reminder System</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .container { max-width: 750px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 25px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #34495e; font-weight: bold; }
+        input[type="text"], input[type="datetime-local"] { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #2ecc71; border: none; color: white; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #27ae60; }
+        hr { margin: 30px 0; border: 0; border-top: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #34495e; color: white; }
+        .status-badge { background-color: #2ecc71; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .delete-btn { background-color: #e74c3c; padding: 6px 12px; font-size: 12px; width: auto; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .delete-btn:hover { background-color: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📅 Book an Appointment</h2>
+    
+    <!-- 1. FORM SECTION -->
+    <form id="appointmentForm">
+        <div class="form-group">
+            <label>Customer Name:</label>
+            <input type="text" id="name" placeholder="Enter full name" required>
+        </div>
+        <div class="form-group">
+            <label>Phone Number (with Country Code):</label>
+            <input type="text" id="phone" placeholder="+1234567890" required>
+        </div>
+        <div class="form-group">
+            <label>Appointment Date & Time:</label>
+            <input type="datetime-local" id="time" required>
+        </div>
+        <button type="submit">Submit Appointment & Send Notification</button>
+    </form>
+
+    <hr>
+
+    <!-- 2. LIVE DASHBOARD SECTION -->
+    <h2>📊 Live Appointment Dashboard</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Date & Time</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="dashboardBody">
+            <!-- Data will be injected here live via JS -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // पेज लोड होते ही लाइव डैशबोर्ड का डेटा खींचना
+    document.addEventListener("DOMContentLoaded", fetchDashboardData);
+
+    // फॉर्म सबमिट होने का लॉजिक
+    document.getElementById("appointmentForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById("name").value;
+        const phone = document.getElementById("phone").value;
+        const time = document.getElementById("time").value;
+
+        // बैकएंड को POST रिक्वेस्ट भेजना
+        const response = await fetch('/api/appointments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, time })
+        });
+
+        if (response.ok) {
+            alert("Success! Appointment saved.");
+            document.getElementById("appointmentForm").reset();
+            fetchDashboardData(); // बिना रिफ्रेश किए डैशबोर्ड अपडेट करना
+        } else {
+            alert("Error saving appointment.");
+        }
+    });
+
+    // डेटाबेस से लाइव डेटा लाकर टेबल में दिखाने का फंक्शन (GET)
+    async function fetchDashboardData() {
+        const response = await fetch('/api/appointments');
+        const appointments = await response.json();
+        
+        const tbody = document.getElementById("dashboardBody");
+        tbody.innerHTML = ""; // पुरानी टेबल खाली करना
+
+        appointments.forEach(app => {
+            const row = `<tr>
+                <td><strong>${app.name}</strong></td>
+                <td>${app.phone}</td>
+                <td>${app.time.replace('T', ' ')}</td>
+                <td><span class="status-badge">${app.status}</span></td>
+                <td><button class="delete-btn" onclick="deleteRecord(${app.id})">Delete</button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    // Record delete karne ke liye frontend function (DELETE)
+    async function deleteRecord(id) {
+        if (confirm("Kya aap is appointment ko delete karna chahte hain?")) {
+            const response = await fetch(`/api/appointments/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                fetchDashboardData(); // table live refresh ho jayegi
+            } else {
+                alert("Error deleting record");
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
